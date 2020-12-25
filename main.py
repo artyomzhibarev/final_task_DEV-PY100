@@ -120,7 +120,6 @@ def get_discount(value: bool):
 
 
 def books_generator(sale: bool, authors: Optional[int] = None):
-    #  args.sale, args.authors
     """
     Random dict generator
     :return:
