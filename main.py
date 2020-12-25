@@ -4,6 +4,8 @@ import json
 import random
 import re
 
+from typing import Optional
+
 from faker import Faker
 
 from conf import model
@@ -19,36 +21,44 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
-    gen_book = books_generator()
     list_of_books = []
+    gen_book = books_generator(args.sale, args.authors)
     for _ in range(args.count):
         list_of_books.append(next(gen_book))
-    if args.json:
-        get_json_file(list_of_books)
-    elif args.csv:
-        get_csv_file(list_of_books)
+    if args.output_format == 'json':
+        to_json_file(list_of_books, args.name, args.ind)
+    elif args.output_format == 'csv':
+        to_csv_file(list_of_books, args.name, args.deli)
     else:
         print(list_of_books)
 
 
-def get_json_file(obj: list):
+def to_json_file(obj: list, filename, i):
     """
     Get .json file
     :param obj:
+    :param filename:
+    :param i:
     :return:
     """
-    with open('list_of_books.json', 'w', encoding='utf-8') as json_output_file:
-        json.dump(obj, json_output_file, indent=4)
+    if not filename.endswith('.json'):
+        filename += '.json'
+    with open(filename, 'w', encoding='utf-8') as json_output_file:
+        json.dump(obj, json_output_file, indent=i)
 
 
-def get_csv_file(obj: list):
+def to_csv_file(obj: list, filename: str, deli: str):
     """
     Get .csv file
+    :param filename:
     :param obj:
+    :param deli:
     :return:
     """
-    with open('list_of_books.csv', 'w', encoding='utf-8') as csv_output_file:
-        wr = csv.writer(csv_output_file, quoting=csv.QUOTE_ALL)
+    if not filename.endswith('.csv'):
+        filename += '.csv'
+    with open(filename, 'w', newline='') as csv_output_file:
+        wr = csv.writer(csv_output_file, delimiter=deli, quoting=csv.QUOTE_MINIMAL)
         wr.writerow(obj)
 
 
@@ -72,13 +82,23 @@ def get_authors():
     pattern_name = re.compile(r"(?P<name>[A-Z]\w+\s+[A-Z]\w+)")
     authors = []
     with open(AUTHORS, 'r', encoding='utf-8') as author_file:
-        k = 1
-        for author in author_file:
+        for k, author in enumerate(author_file):
             if not re.fullmatch(pattern_name, author.strip()):
                 raise ValueError(f"String {k} doesnt match {pattern_name}")
-            k += 1
             authors.append(author.strip())
     return authors
+
+
+def get_rand_authors(list_: list, value: Optional[int] = None):
+    """
+    Get random authors
+    :param list_:
+    :param value:
+    :return:
+    """
+    if value is None:
+        value = random.randint(1, 3)
+    return random.sample(list_, value)
 
 
 def get_isbn13():
@@ -96,19 +116,15 @@ def get_discount(value: bool):
     :param value:
     :return:
     """
-    if value:
-        return random.randint(1, 100)
-    else:
-        return None
+    return None if not value else random.randint(1, 100)
 
 
-def books_generator():
+def books_generator(sale: bool, authors: Optional[int] = None):
+    #  args.sale, args.authors
     """
     Random dict generator
     :return:
     """
-    parser = create_parser()
-    args = parser.parse_args()
     i = 0
     while True:
         dict_ = dict()
@@ -121,8 +137,8 @@ def books_generator():
             "isbn13": get_isbn13(),
             "rating": random.uniform(0, 5).__round__(3),
             "price": random.uniform(1000, 5000).__round__(3),
-            "discount": get_discount(args.sale),
-            "author": random.sample(get_authors(), args.authors)
+            "discount": get_discount(sale),
+            "author": get_rand_authors(get_authors(), authors)
         }
         yield dict_
         i += 1
@@ -132,27 +148,30 @@ def create_parser():
     parser = argparse.ArgumentParser("These arguments add behavior to our script")
     parser.add_argument('-c', '--count', default=3, type=int,
                         help='Amount of dictionaries for output')
-    parser.add_argument('-a', '--authors', default=random.randint(1, 3),
-                        type=int, help='Amount authors')
+    parser.add_argument('-a', '--authors', default=None,
+                        type=int, help='Amount of authors for output')
     parser.add_argument('-s', '--sale', action='store_true',
                         help='-s - Include a discount')
-    parser.add_argument('--json', action='store_true',
-                        help='Export list of dictionary\'s to json file')
-    parser.add_argument('--csv', action='store_true',
-                        help='Export list of dictionary\'s to csv file')
+    subparsers = parser.add_subparsers(dest='output_format')
+
+    # -------------------------------------json subparser create----------------------------------
+
+    output_format_parser = subparsers.add_parser('json')
+    output_format_parser.add_argument('-n', '--name', dest='name', required=False,
+                                      type=str, default='test.json', help='-n <filename>')
+    output_format_parser.add_argument('-i', '--ind', dest='ind', required=False, default=4,
+                                      help='-i <indent>', type=int)
+
+    # -------------------------------------csv subparser create----------------------------------
+
+    output_format_parser = subparsers.add_parser('csv')
+    output_format_parser.add_argument('-n', '--name', dest='name', required=False,
+                                      type=str, default='test.csv', help='Set csv filename, -n <filename>, '
+                                                                         'default test.csv')
+    output_format_parser.add_argument('-d', '--deli', dest='deli', required=False, default='\n',
+                                      help='Set delimiter, -d <one-character string>, default \\n', type=str)
 
     return parser
-
-
-# def universal_type_checker_decorator(fn):
-#     def wrapper(*args, **kwargs):
-#         print('Этот код будет выполняться перед каждым вызовом функции')
-#         for key, value in dict_.items():
-#             print(f'The key {key} value {value} is {type(value)}')
-#         print('Этот код будет выполняться после каждого вызова функции')
-#         return result
-#
-#     return wrapper
 
 
 if __name__ == '__main__':

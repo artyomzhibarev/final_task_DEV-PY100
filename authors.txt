@@ -1,0 +1,12 @@
+Paul Barry
+Eric Matthes
+Luciano Ramalho
+David Beazley
+Sebastian Raschka
+Mark Pilgrim
+David Beazley
+Dan Bader
+Brett Slatkin
+Zed Shaw
+Paul Barry
+Eric Matthes
